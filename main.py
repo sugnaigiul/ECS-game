@@ -10,6 +10,15 @@ pygame.init()
 WINDOW_WIDTH = 800
 WINDOW_HEIGHT = 600
 FPS = 60
+TITLE_FONT_SIZE = 100
+SUBTITLE_FONT_SIZE = 40
+GAME_TITLE = "BERMUDA EXPLORER"
+START_TEXT = "press space to start"
+MISSION_TITLE = "YOUR MISSION:"
+MISSION_TEXT = """Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor 
+incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation 
+ullamco laboris nisi ut aliquip ex ea commodo consequat."""
+CONTINUE_TEXT = "Press space to continue"
 
 # Couleurs
 BLACK = (0, 0, 0)
@@ -136,6 +145,7 @@ class Game:
         self.entities: List[Entity] = []
         self.running = True
         self.in_menu = True
+        self.in_mission_screen = False
         self.in_intro_animation = False
         self.animation_timer = 0
         self.fade_alpha = 0
@@ -178,15 +188,81 @@ class Game:
 
     def draw_menu(self):
         self.screen.fill(BLACK)
-        # Créer le bouton "BEGIN"
-        font = pygame.font.Font(None, 74)
-        text = font.render('BEGIN', True, WHITE)
-        text_rect = text.get_rect(center=(WINDOW_WIDTH/2, WINDOW_HEIGHT/2))
-        self.screen.blit(text, text_rect)
+        
+        # Titre du jeu
+        title_font = pygame.font.Font(None, TITLE_FONT_SIZE)
+        title_text = title_font.render(GAME_TITLE, True, WHITE)
+        title_rect = title_text.get_rect(center=(WINDOW_WIDTH/2, WINDOW_HEIGHT/4))
+        
+        # Image du menu (à charger et redimensionner)
+        menu_image = pygame.image.load("./assets/images/heli-menu.png")  # Créez cette image
+        menu_image = pygame.transform.scale(menu_image, (634, 215))  # Ajustez la taille selon vos besoins
+        image_rect = menu_image.get_rect(center=(WINDOW_WIDTH/2, WINDOW_HEIGHT/2))
+        
+        # Texte "press space to start"
+        subtitle_font = pygame.font.Font(None, SUBTITLE_FONT_SIZE)
+        subtitle_text = subtitle_font.render(START_TEXT, True, WHITE)
+        subtitle_rect = subtitle_text.get_rect(center=(WINDOW_WIDTH/2, WINDOW_HEIGHT * 3/4))
+        
+        # Affichage des éléments
+        self.screen.blit(title_text, title_rect)
+        self.screen.blit(menu_image, image_rect)
+        self.screen.blit(subtitle_text, subtitle_rect)
         pygame.display.flip()
 
-    def start_intro_animation(self):
+    def draw_mission_screen(self):
+        self.screen.fill(BLACK)
+        
+        # Titre de la mission
+        mission_font = pygame.font.Font(None, 50)
+        mission_title = mission_font.render(MISSION_TITLE, True, WHITE)
+        title_rect = mission_title.get_rect(topleft=(50, 50))
+        
+        # Texte principal
+        text_font = pygame.font.Font(None, 36)
+        # Wrap le texte pour qu'il ne dépasse pas l'écran
+        words = MISSION_TEXT.split()
+        lines = []
+        current_line = []
+        current_width = 0
+        max_width = WINDOW_WIDTH - 100  # Marge de 50px de chaque côté
+        
+        for word in words:
+            word_surface = text_font.render(word + " ", True, WHITE)
+            word_width = word_surface.get_width()
+            if current_width + word_width <= max_width:
+                current_line.append(word)
+                current_width += word_width
+            else:
+                lines.append(" ".join(current_line))
+                current_line = [word]
+                current_width = word_width
+        lines.append(" ".join(current_line))
+        
+        # Afficher le texte ligne par ligne
+        y_offset = 150
+        for line in lines:
+            text_surface = text_font.render(line, True, WHITE)
+            text_rect = text_surface.get_rect(topleft=(50, y_offset))
+            self.screen.blit(text_surface, text_rect)
+            y_offset += 40
+        
+        # Texte "Press space to continue"
+        continue_font = pygame.font.Font(None, 40)
+        continue_text = continue_font.render(CONTINUE_TEXT, True, WHITE)
+        continue_rect = continue_text.get_rect(center=(WINDOW_WIDTH/2, WINDOW_HEIGHT - 50))
+        
+        # Affichage des éléments
+        self.screen.blit(mission_title, title_rect)
+        self.screen.blit(continue_text, continue_rect)
+        pygame.display.flip()
+
+    def start_mission_screen(self):
         self.in_menu = False
+        self.in_mission_screen = True
+
+    def start_intro_animation(self):
+        self.in_mission_screen = False
         self.in_intro_animation = True
         self.animation_timer = 0
         self.create_boat()
@@ -238,11 +314,17 @@ class Game:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     self.running = False
-                elif event.type == pygame.MOUSEBUTTONDOWN and self.in_menu:
-                    self.start_intro_animation()
+                elif event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_SPACE:
+                        if self.in_menu:
+                            self.start_mission_screen()
+                        elif self.in_mission_screen:
+                            self.start_intro_animation()
 
             if self.in_menu:
                 self.draw_menu()
+            elif self.in_mission_screen:
+                self.draw_mission_screen()
             elif self.in_intro_animation:
                 self.screen.fill(BLUE)
                 self.render_system.update(self.entities)
