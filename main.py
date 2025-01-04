@@ -272,6 +272,10 @@ class Game:
         self.background_animation = pygame.transform.scale(self.background_animation, (WINDOW_WIDTH, WINDOW_HEIGHT))
         self.background_game = pygame.transform.scale(self.background_game, (WINDOW_WIDTH, WINDOW_HEIGHT))
 
+        self.game_over_font = pygame.font.Font(None, 74)
+        self.game_over_info_font = pygame.font.Font(None, 36)
+        self.restart_font = pygame.font.Font(None, 40)
+
     def create_boat(self):
         boat = Entity()
         # Centrer le bateau en prenant en compte sa taille
@@ -420,6 +424,30 @@ class Game:
         timer_rect = timer_text.get_rect(topright=(WINDOW_WIDTH - 20, 20))
         self.screen.blit(timer_text, timer_rect)
 
+    def draw_game_over_screen(self):
+        # Créer une surface semi-transparente noire
+        overlay = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT))
+        overlay.fill((0, 0, 0))
+        overlay.set_alpha(128)  # 128 pour semi-transparent
+        self.screen.blit(overlay, (0, 0))
+
+        # Texte "Game Over"
+        game_over_text = self.game_over_font.render('Game Over', True, WHITE)
+        game_over_rect = game_over_text.get_rect(center=(WINDOW_WIDTH/2, WINDOW_HEIGHT/2 - 60))
+        
+        # Temps survécu
+        time_text = self.game_over_info_font.render(f'Time survived: {self.game_timer} seconds', True, WHITE)
+        time_rect = time_text.get_rect(center=(WINDOW_WIDTH/2, WINDOW_HEIGHT/2 + 20))
+        
+        # Message pour redémarrer
+        restart_text = self.game_over_info_font.render('Press SPACE to restart', True, WHITE)
+        restart_rect = restart_text.get_rect(center=(WINDOW_WIDTH/2, WINDOW_HEIGHT/2 + 80))
+        
+        # Afficher tous les textes
+        self.screen.blit(game_over_text, game_over_rect)
+        self.screen.blit(time_text, time_rect)
+        self.screen.blit(restart_text, restart_rect)
+
     def run(self):
         fade_surface = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT))
         fade_surface.fill((0, 0, 0))
@@ -434,6 +462,8 @@ class Game:
                             self.start_mission_screen()
                         elif self.in_mission_screen:
                             self.start_intro_animation()
+                        elif self.game_over:  # Ajout de la gestion du restart
+                            self.setup_game_world()
 
             if self.in_menu:
                 self.draw_menu()
@@ -458,7 +488,6 @@ class Game:
                     self.input_system.update(self.entities)
                     self.movement_system.update(self.entities)
                     
-                    # Passer le game_timer au tornado_system
                     if self.tornado_system.update(self.entities, self.game_timer):
                         self.game_over = True
                     
@@ -466,11 +495,9 @@ class Game:
                     self.update_timer()
                     self.draw_timer()
                 else:
-                    # Afficher l'écran de game over
-                    game_over_font = pygame.font.Font(None, 74)
-                    game_over_text = game_over_font.render('Game Over', True, WHITE)
-                    game_over_rect = game_over_text.get_rect(center=(WINDOW_WIDTH/2, WINDOW_HEIGHT/2))
-                    self.screen.blit(game_over_text, game_over_rect)
+                    # Afficher quand même le jeu en arrière-plan
+                    self.render_system.update(self.entities)
+                    self.draw_game_over_screen()
                 
                 pygame.display.flip()
 
