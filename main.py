@@ -1,7 +1,8 @@
 import pygame
 import sys
-from typing import List, Dict
+from typing import List, Dict, Optional
 import math
+import random
 
 # Initialisation de Pygame
 pygame.init()
@@ -21,6 +22,9 @@ ullamco laboris nisi ut aliquip ex ea commodo consequat."""
 CONTINUE_TEXT = "Press space to continue"
 BACKGROUND_ANIMATION = "./assets/images/back-anim.png"
 BACKGROUND_GAME = "./assets/images/back-game.png"
+TORNADO_RADIUS = 20
+TORNADO_SPEED = 3
+TORNADO_SPAWN_RATE = 60  # Nombre de frames entre chaque spawn de tornade
 
 # Couleurs
 BLACK = (0, 0, 0)
@@ -69,6 +73,11 @@ class RotorComponent(Component):
         self.rotation_speed = 0  # Vitesse de rotation en degrés par frame
         self.parent_width = parent_width  # Largeur de l'hélicoptère pour centrer le rotor
 
+class TornadoComponent(Component):
+    def __init__(self, radius: int, speed: float):
+        self.radius = radius
+        self.speed = speed
+
 class InputSystem:
     def update(self, entities: List[Entity]):
         keys = pygame.key.get_pressed()
@@ -110,9 +119,21 @@ class MovementSystem:
                         real_dx = speed * math.cos(angle_rad)
                         real_dy = -speed * math.sin(angle_rad)
                         
-                        # Appliquer le mouvement
-                        pos.x += real_dx
-                        pos.y += real_dy
+                        # Calculer la nouvelle position
+                        new_x = pos.x + real_dx
+                        new_y = pos.y + real_dy
+                        
+                        # Obtenir les dimensions du sprite
+                        sprite_width = sprite.image.get_width()
+                        sprite_height = sprite.image.get_height()
+                        
+                        # Vérifier et appliquer les limites
+                        new_x = max(0, min(new_x, WINDOW_WIDTH - sprite_width))
+                        new_y = max(0, min(new_y, WINDOW_HEIGHT - sprite_height))
+                        
+                        # Appliquer la position finale
+                        pos.x = new_x
+                        pos.y = new_y
 
 class RenderSystem:
     def __init__(self, screen):
@@ -139,6 +160,59 @@ class RenderSystem:
                     rotor_y = pos.y + (sprite.image.get_height() - rotor.image.get_height()) / 2
                     self.screen.blit(rotor.image, (rotor_x, rotor_y))
 
+class TornadoSystem:
+    def __init__(self):
+        self.spawn_counter = 0
+    
+    def update(self, entities: List[Entity]) -> Optional[bool]:
+        # Déplacer les tornades existantes
+        for entity in entities:
+            if 'tornado' in entity.components and 'position' in entity.components:
+                pos = entity.components['position']
+                tornado = entity.components['tornado']
+                
+                # Déplacer la tornade vers le bas
+                pos.y += tornado.speed
+                
+                # Vérifier les collisions avec l'hélicoptère
+                for other in entities:
+                    if 'sprite' in other.components and 'position' in other.components:
+                        heli_pos = other.components['position']
+                        heli_sprite = other.components['sprite']
+                        
+                        # Calculer le centre de l'hélicoptère
+                        heli_center_x = heli_pos.x + heli_sprite.image.get_width() / 2
+                        heli_center_y = heli_pos.y + heli_sprite.image.get_height() / 2
+                        
+                        # Calculer la distance entre la tornade et l'hélicoptère
+                        distance = math.sqrt((pos.x - heli_center_x)**2 + (pos.y - heli_center_y)**2)
+                        
+                        # Si collision, retourner True pour indiquer game over
+                        if distance < tornado.radius + min(heli_sprite.image.get_width(), 
+                                                         heli_sprite.image.get_height()) / 2:
+                            return True
+                
+                # Supprimer les tornades qui sortent de l'écran
+                if pos.y > WINDOW_HEIGHT:
+                    entities.remove(entity)
+        
+        # Spawn de nouvelles tornades
+        self.spawn_counter += 1
+        if self.spawn_counter >= TORNADO_SPAWN_RATE:
+            self.spawn_counter = 0
+            self.spawn_tornado(entities)
+        
+        return False
+    
+    def spawn_tornado(self, entities: List[Entity]):
+        tornado = Entity()
+        # Position aléatoire en haut de l'écran
+        x = random.randint(TORNADO_RADIUS, WINDOW_WIDTH - TORNADO_RADIUS)
+        tornado.components['position'] = PositionComponent(x, -TORNADO_RADIUS)
+        tornado.components['tornado'] = TornadoComponent(TORNADO_RADIUS, TORNADO_SPEED)
+        tornado.components['render'] = RenderComponent(TORNADO_RADIUS * 2, TORNADO_RADIUS * 2, BLUE)
+        entities.append(tornado)
+
 class Game:
     def __init__(self):
         self.screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
@@ -155,6 +229,8 @@ class Game:
         self.game_timer = 0  # Timer commence à 0
         self.timer_font = pygame.font.Font(None, 36)
         self.last_time = 0
+        self.tornado_system = TornadoSystem()
+        self.game_over = False
 
         # Systèmes
         self.movement_system = MovementSystem()
@@ -302,6 +378,7 @@ class Game:
         helicopter.components['rotor'].rotation_speed = 30
         self.game_timer = 0
         self.last_time = pygame.time.get_ticks()
+        self.game_over = False
 
     def update_timer(self):
         current_time = pygame.time.get_ticks()
@@ -347,11 +424,34 @@ class Game:
             else:
                 # Jeu normal
                 self.screen.blit(self.background_game, (0, 0))
-                self.input_system.update(self.entities)
-                self.movement_system.update(self.entities)
-                self.render_system.update(self.entities)
-                self.update_timer()
-                self.draw_timer()
+                
+                if not self.game_over:
+                    self.input_system.update(self.entities)
+                    self.movement_system.update(self.entities)
+                    
+                    # Mettre à jour les tornades et vérifier le game over
+                    if self.tornado_system.update(self.entities):
+                        self.game_over = True
+                    
+                    # Dessiner les tornades
+                    for entity in self.entities:
+                        if 'tornado' in entity.components and 'position' in entity.components:
+                            pos = entity.components['position']
+                            tornado = entity.components['tornado']
+                            pygame.draw.circle(self.screen, BLUE, 
+                                            (int(pos.x), int(pos.y)), 
+                                            tornado.radius)
+                    
+                    self.render_system.update(self.entities)
+                    self.update_timer()
+                    self.draw_timer()
+                else:
+                    # Afficher l'écran de game over
+                    game_over_font = pygame.font.Font(None, 74)
+                    game_over_text = game_over_font.render('Game Over', True, WHITE)
+                    game_over_rect = game_over_text.get_rect(center=(WINDOW_WIDTH/2, WINDOW_HEIGHT/2))
+                    self.screen.blit(game_over_text, game_over_rect)
+                
                 pygame.display.flip()
 
             self.clock.tick(FPS)
