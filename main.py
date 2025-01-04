@@ -124,8 +124,8 @@ class RenderSystem:
                     
                     # Centrer le rotor sur l'hélicoptère
                     sprite = entity.components['sprite']
-                    rotor_x = pos.x + sprite.image.get_width()/2 - rotor.image.get_width()/2
-                    rotor_y = pos.y + sprite.image.get_height()/4 - rotor.image.get_height()/2 + 20
+                    rotor_x = pos.x + (sprite.image.get_width() - rotor.image.get_width()) / 2
+                    rotor_y = pos.y + (sprite.image.get_height() - rotor.image.get_height()) / 2
                     self.screen.blit(rotor.image, (rotor_x, rotor_y))
 
 class Game:
@@ -164,15 +164,16 @@ class Game:
     def create_helicopter(self):
         helicopter = Entity()
         boat_pos = self.boat.components['position']
-        heli_width, heli_height = 52, 104
-        heli_x = boat_pos.x + (103 - heli_width) / 2
-        heli_y = boat_pos.y + heli_height - 30
+        heli_size = 104  # Taille unique puisque c'est maintenant carré
+        heli_x = boat_pos.x + (103 - heli_size) / 2
+        heli_y = boat_pos.y + heli_size - 30
         
         helicopter.components['position'] = PositionComponent(heli_x, heli_y)
         helicopter.components['velocity'] = VelocityComponent()
-        helicopter.components['sprite'] = SpriteComponent("./assets/images/heli-sprite.png", heli_width, heli_height)
-        # Ajout du rotor
-        helicopter.components['rotor'] = RotorComponent("./assets/images/rotor-sprite.png", 92, 92, heli_width)
+        helicopter.components['sprite'] = SpriteComponent("./assets/images/heli-sprite.png", heli_size, heli_size)
+        # Ajout du rotor avec une taille proportionnelle à l'hélicoptère
+        rotor_size = 92  # Taille du rotor
+        helicopter.components['rotor'] = RotorComponent("./assets/images/rotor-sprite.png", rotor_size, rotor_size, heli_size)
         self.entities.append(helicopter)
 
     def draw_menu(self):
