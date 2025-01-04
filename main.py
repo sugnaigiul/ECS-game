@@ -24,7 +24,11 @@ BACKGROUND_ANIMATION = "./assets/images/back-anim.png"
 BACKGROUND_GAME = "./assets/images/back-game.png"
 TORNADO_RADIUS = 20
 TORNADO_SPEED = 3
-TORNADO_SPAWN_RATE = 60  # Nombre de frames entre chaque spawn de tornade
+TORNADO_SPAWN_RATE_INITIAL = 60  # Taux initial (plus le nombre est bas, plus il y a de tornades)
+TORNADO_SPAWN_RATE_MIN = 15      # Taux minimum (spawn le plus rapide)
+DIFFICULTY_INCREASE_INTERVAL = 3 # Augmente la difficulté toutes les X secondes
+TORNADO_SPRITE = "./assets/images/tornado-sprite.png"  
+TORNADO_ROTATION_SPEED = 5  # Vitesse de rotation en degrés par frame
 
 # Couleurs
 BLACK = (0, 0, 0)
@@ -77,6 +81,12 @@ class TornadoComponent(Component):
     def __init__(self, radius: int, speed: float):
         self.radius = radius
         self.speed = speed
+        self.angle = 0  # Angle de rotation actuel
+        self.original_image = pygame.image.load(TORNADO_SPRITE)
+        # Redimensionner l'image pour qu'elle soit un peu plus grande que le cercle de collision
+        sprite_size = radius * 2.5  # 2.5 fois la taille du cercle pour un meilleur effet visuel
+        self.original_image = pygame.transform.scale(self.original_image, (sprite_size, sprite_size))
+        self.image = self.original_image
 
 class InputSystem:
     def update(self, entities: List[Entity]):
@@ -143,6 +153,18 @@ class RenderSystem:
         for entity in entities:
             if 'position' in entity.components:
                 pos = entity.components['position']
+                
+                # Rendu des tornades
+                if 'tornado' in entity.components:
+                    tornado = entity.components['tornado']
+                    # Mettre à jour la rotation
+                    tornado.angle = (tornado.angle + TORNADO_ROTATION_SPEED) % 360
+                    tornado.image = pygame.transform.rotate(tornado.original_image, tornado.angle)
+                    
+                    # Calculer la position pour centrer l'image sur le cercle de collision
+                    tornado_rect = tornado.image.get_rect(center=(pos.x, pos.y))
+                    self.screen.blit(tornado.image, tornado_rect)
+                
                 # Rendu du sprite principal
                 if 'sprite' in entity.components:
                     sprite = entity.components['sprite']
@@ -163,8 +185,15 @@ class RenderSystem:
 class TornadoSystem:
     def __init__(self):
         self.spawn_counter = 0
+        self.current_spawn_rate = TORNADO_SPAWN_RATE_INITIAL
     
-    def update(self, entities: List[Entity]) -> Optional[bool]:
+    def update(self, entities: List[Entity], game_timer: int) -> Optional[bool]:
+        # Ajuster la difficulté en fonction du temps
+        self.current_spawn_rate = max(
+            TORNADO_SPAWN_RATE_MIN,
+            TORNADO_SPAWN_RATE_INITIAL - (game_timer // DIFFICULTY_INCREASE_INTERVAL) * 5
+        )
+        
         # Déplacer les tornades existantes
         for entity in entities:
             if 'tornado' in entity.components and 'position' in entity.components:
@@ -196,9 +225,9 @@ class TornadoSystem:
                 if pos.y > WINDOW_HEIGHT:
                     entities.remove(entity)
         
-        # Spawn de nouvelles tornades
+        # Spawn de nouvelles tornades avec le taux actualisé
         self.spawn_counter += 1
-        if self.spawn_counter >= TORNADO_SPAWN_RATE:
+        if self.spawn_counter >= self.current_spawn_rate:
             self.spawn_counter = 0
             self.spawn_tornado(entities)
         
@@ -429,18 +458,9 @@ class Game:
                     self.input_system.update(self.entities)
                     self.movement_system.update(self.entities)
                     
-                    # Mettre à jour les tornades et vérifier le game over
-                    if self.tornado_system.update(self.entities):
+                    # Passer le game_timer au tornado_system
+                    if self.tornado_system.update(self.entities, self.game_timer):
                         self.game_over = True
-                    
-                    # Dessiner les tornades
-                    for entity in self.entities:
-                        if 'tornado' in entity.components and 'position' in entity.components:
-                            pos = entity.components['position']
-                            tornado = entity.components['tornado']
-                            pygame.draw.circle(self.screen, BLUE, 
-                                            (int(pos.x), int(pos.y)), 
-                                            tornado.radius)
                     
                     self.render_system.update(self.entities)
                     self.update_timer()
