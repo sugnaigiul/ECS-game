@@ -19,6 +19,8 @@ MISSION_TEXT = """Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed d
 incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation 
 ullamco laboris nisi ut aliquip ex ea commodo consequat."""
 CONTINUE_TEXT = "Press space to continue"
+BACKGROUND_ANIMATION = "./assets/images/back-anim.png"
+BACKGROUND_GAME = "./assets/images/back-game.png"
 
 # Couleurs
 BLACK = (0, 0, 0)
@@ -158,6 +160,12 @@ class Game:
         self.movement_system = MovementSystem()
         self.render_system = RenderSystem(self.screen)
         self.input_system = InputSystem()
+
+        # Chargement des backgrounds
+        self.background_animation = pygame.image.load(BACKGROUND_ANIMATION)
+        self.background_game = pygame.image.load(BACKGROUND_GAME)
+        self.background_animation = pygame.transform.scale(self.background_animation, (WINDOW_WIDTH, WINDOW_HEIGHT))
+        self.background_game = pygame.transform.scale(self.background_game, (WINDOW_WIDTH, WINDOW_HEIGHT))
 
     def create_boat(self):
         boat = Entity()
@@ -326,7 +334,7 @@ class Game:
             elif self.in_mission_screen:
                 self.draw_mission_screen()
             elif self.in_intro_animation:
-                self.screen.fill(BLUE)
+                self.screen.blit(self.background_animation, (0, 0))
                 self.render_system.update(self.entities)
                 self.update_intro_animation()
                 
@@ -338,12 +346,12 @@ class Game:
                 pygame.display.flip()
             else:
                 # Jeu normal
-                self.screen.fill(BLUE)
+                self.screen.blit(self.background_game, (0, 0))
                 self.input_system.update(self.entities)
                 self.movement_system.update(self.entities)
                 self.render_system.update(self.entities)
-                self.update_timer()  # Mettre à jour le timer
-                self.draw_timer()    # Afficher le timer
+                self.update_timer()
+                self.draw_timer()
                 pygame.display.flip()
 
             self.clock.tick(FPS)
