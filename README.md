@@ -14,6 +14,10 @@ A 2D helicopter game built with Python and Pygame using an Entity Component Syst
 - Mission briefing screen
 - Game over system with restart capability
 
+## How to install
+
+You can either download the V1 release and launch the executable file (.exe) or clone the repository and run the game with `python main.py`.
+
 ## How to play
 
 - Use arrow keys to control the helicopter
