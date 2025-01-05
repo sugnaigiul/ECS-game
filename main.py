@@ -19,7 +19,11 @@ START_TEXT = "Press space to start"
 MISSION_TITLE = "YOUR MISSION:"
 MISSION_TEXT = """Recently, numerous ships have mysteriously vanished in this region. Your team has been 
 dispatched to investigate and gather data about these unexplained events. However, be extremely cautious: 
-weather conditions in the area are predicted to be particularly dangerous and challenging."""
+weather conditions in the area are predicted to be particularly dangerous and challenging.
+
+CONTROLS:
+Use the Arrow keys to pilot the helicopter
+Avoid the tornadoes at all costs!"""
 CONTINUE_TEXT = "Press space to continue"
 BACKGROUND_ANIMATION = "./assets/images/back-anim.png"
 BACKGROUND_GAME = "./assets/images/back-game.png"
@@ -342,14 +346,13 @@ class Game:
         mission_title = mission_font.render(MISSION_TITLE, True, WHITE)
         title_rect = mission_title.get_rect(topleft=(50, 50))
         
-        #Texte principal
+        #Texte principal avec le même système de wrap que précédemment
         text_font = pygame.font.Font(None, 36)
-        #Wrap le texte pour qu'il ne dépasse pas l'écran
         words = MISSION_TEXT.split()
         lines = []
         current_line = []
         current_width = 0
-        max_width = WINDOW_WIDTH - 100  #Marge de 50px de chaque côté
+        max_width = WINDOW_WIDTH - 100
         
         for word in words:
             word_surface = text_font.render(word + " ", True, WHITE)
