@@ -165,26 +165,23 @@ class RenderSystem:
                 #Rendu des tornades
                 if 'tornado' in entity.components:
                     tornado = entity.components['tornado']
-                    #Mettre à jour la rotation
                     tornado.angle = (tornado.angle + TORNADO_ROTATION_SPEED) % 360
                     tornado.image = pygame.transform.rotate(tornado.original_image, tornado.angle)
-                    
-                    #Calculer la position pour centrer l'image sur le cercle de collision
                     tornado_rect = tornado.image.get_rect(center=(pos.x, pos.y))
                     self.screen.blit(tornado.image, tornado_rect)
                 
-                #Rendu du sprite principal
+                #Rendu du sprite de l'hélico
                 if 'sprite' in entity.components:
                     sprite = entity.components['sprite']
                     self.screen.blit(sprite.image, (pos.x, pos.y))
-                    
+                
                 #Rendu du rotor
                 if 'rotor' in entity.components:
                     rotor = entity.components['rotor']
                     rotor.angle = (rotor.angle + rotor.rotation_speed) % 360
                     rotor.image = pygame.transform.rotate(rotor.original_image, rotor.angle)
                     
-                    # Centrer le rotor sur l'hélicoptère
+                    #entrer le rotor sur l'hélico
                     sprite = entity.components['sprite']
                     rotor_x = pos.x + (sprite.image.get_width() - rotor.image.get_width()) / 2
                     rotor_y = pos.y + (sprite.image.get_height() - rotor.image.get_height()) / 2
@@ -217,16 +214,17 @@ class TornadoSystem:
                         heli_pos = other.components['position']
                         heli_sprite = other.components['sprite']
                         
-                        #Calculer le centre de l'hélico
+                        #Utiliser l'image actuelle pour le centre
                         heli_center_x = heli_pos.x + heli_sprite.image.get_width() / 2
                         heli_center_y = heli_pos.y + heli_sprite.image.get_height() / 2
                         
-                        #Calculer la distance entre la tornade et l'hélico
+                        #Utiliser l'image originale pour le rayon de la hitbox
+                        hitbox_radius = min(heli_sprite.original_image.get_width(), 
+                                          heli_sprite.original_image.get_height()) / 2
+                        
                         distance = math.sqrt((pos.x - heli_center_x)**2 + (pos.y - heli_center_y)**2)
                         
-                        #Si collision, retourner True pour indiquer game over
-                        if distance < tornado.radius + min(heli_sprite.image.get_width(), 
-                                                         heli_sprite.image.get_height()) / 2:
+                        if distance < tornado.radius + hitbox_radius:
                             return True
                 
                 #Supprimer les tornades qui sortent
@@ -346,7 +344,7 @@ class Game:
         mission_title = mission_font.render(MISSION_TITLE, True, WHITE)
         title_rect = mission_title.get_rect(topleft=(50, 50))
         
-        #Texte principal avec le même système de wrap que précédemment
+        #Texte principal
         text_font = pygame.font.Font(None, 36)
         words = MISSION_TEXT.split()
         lines = []
