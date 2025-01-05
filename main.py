@@ -4,33 +4,35 @@ from typing import List, Dict, Optional
 import math
 import random
 
-# Initialisation de Pygame
+#Initialisation de Pygame
 pygame.init()
+pygame.mixer.init()  # Initialiser le système audio
 
-# Constants
+#Constants
 WINDOW_WIDTH = 800
 WINDOW_HEIGHT = 600
 FPS = 60
 TITLE_FONT_SIZE = 100
 SUBTITLE_FONT_SIZE = 40
 GAME_TITLE = "BERMUDA EXPLORER"
-START_TEXT = "press space to start"
+START_TEXT = "Press space to start"
 MISSION_TITLE = "YOUR MISSION:"
-MISSION_TEXT = """Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor 
-incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation 
-ullamco laboris nisi ut aliquip ex ea commodo consequat."""
+MISSION_TEXT = """Recently, numerous ships have mysteriously vanished in this region. Your team has been 
+dispatched to investigate and gather data about these unexplained events. However, be extremely cautious: 
+weather conditions in the area are predicted to be particularly dangerous and challenging."""
 CONTINUE_TEXT = "Press space to continue"
 BACKGROUND_ANIMATION = "./assets/images/back-anim.png"
 BACKGROUND_GAME = "./assets/images/back-game.png"
 TORNADO_RADIUS = 20
 TORNADO_SPEED = 3
-TORNADO_SPAWN_RATE_INITIAL = 60  # Taux initial (plus le nombre est bas, plus il y a de tornades)
-TORNADO_SPAWN_RATE_MIN = 15      # Taux minimum (spawn le plus rapide)
-DIFFICULTY_INCREASE_INTERVAL = 3 # Augmente la difficulté toutes les X secondes
+TORNADO_SPAWN_RATE_INITIAL = 60  #Taux initial de spawn
+TORNADO_SPAWN_RATE_MIN = 15      #Taux le plus rapide
+DIFFICULTY_INCREASE_INTERVAL = 3 #Augmente la difficulté toutes les X secondes
 TORNADO_SPRITE = "./assets/images/tornado-sprite.png"  
-TORNADO_ROTATION_SPEED = 5  # Vitesse de rotation en degrés par frame
+TORNADO_ROTATION_SPEED = 5  #Vitesse de rota tornade
+BACKGROUND_MUSIC = "./assets/sounds/Supercopter.mp3"
 
-# Couleurs
+#Couleurs
 BLACK = (0, 0, 0)
 BLUE = (0, 0, 255)
 WHITE = (255, 255, 255)
@@ -40,6 +42,7 @@ class Entity:
         self.id = id(self)
         self.components: Dict = {}
 
+#Composants
 class Component:
     pass
 
@@ -74,20 +77,21 @@ class RotorComponent(Component):
         self.original_image = pygame.transform.scale(self.original_image, (width, height))
         self.image = self.original_image
         self.angle = 0
-        self.rotation_speed = 0  # Vitesse de rotation en degrés par frame
-        self.parent_width = parent_width  # Largeur de l'hélicoptère pour centrer le rotor
+        self.rotation_speed = 0  #Vitesse de rotation par frame
+        self.parent_width = parent_width  #Largeur de l'hélico pour centrer rotor
 
 class TornadoComponent(Component):
     def __init__(self, radius: int, speed: float):
         self.radius = radius
         self.speed = speed
-        self.angle = 0  # Angle de rotation actuel
+        self.angle = 0  #Angle de rota actuel
         self.original_image = pygame.image.load(TORNADO_SPRITE)
-        # Redimensionner l'image pour qu'elle soit un peu plus grande que le cercle de collision
-        sprite_size = radius * 2.5  # 2.5 fois la taille du cercle pour un meilleur effet visuel
+        #Redimensionner l'image pour qu'elle soit un peu plus grande
+        sprite_size = radius * 2.5
         self.original_image = pygame.transform.scale(self.original_image, (sprite_size, sprite_size))
         self.image = self.original_image
 
+#Systemes
 class InputSystem:
     def update(self, entities: List[Entity]):
         keys = pygame.key.get_pressed()
@@ -115,33 +119,33 @@ class MovementSystem:
                 if 'sprite' in entity.components:
                     sprite = entity.components['sprite']
                     
-                    # Rotation du sprite en fonction de la direction
+                    #Rota du sprite en fonction de la direction
                     if vel.dx != 0 or vel.dy != 0:
-                        # Calculer l'angle en fonction de la direction
+                        #Calculer l'angle en fonction de la direction
                         angle = math.degrees(math.atan2(-vel.dy, vel.dx))
                         sprite.angle = angle
-                        # -90 degrés pour compenser l'orientation initiale du sprite
+                        #compenser l'orientation initiale du sprite
                         sprite.image = pygame.transform.rotate(sprite.original_image, sprite.angle - 90)
                         
-                        # Transformer la vélocité en fonction de l'angle actuel
+                        #Transformer la vélocité en fonction de l'angle actuel
                         angle_rad = math.radians(sprite.angle)
                         speed = math.sqrt(vel.dx * vel.dx + vel.dy * vel.dy)
                         real_dx = speed * math.cos(angle_rad)
                         real_dy = -speed * math.sin(angle_rad)
                         
-                        # Calculer la nouvelle position
+                        #Calc la nouvelle position
                         new_x = pos.x + real_dx
                         new_y = pos.y + real_dy
                         
-                        # Obtenir les dimensions du sprite
+                        #Obtenir les dimensions du sprite
                         sprite_width = sprite.image.get_width()
                         sprite_height = sprite.image.get_height()
                         
-                        # Vérifier et appliquer les limites
+                        #Vérif et appliquer les limites
                         new_x = max(0, min(new_x, WINDOW_WIDTH - sprite_width))
                         new_y = max(0, min(new_y, WINDOW_HEIGHT - sprite_height))
                         
-                        # Appliquer la position finale
+                        #Appliquer la pos finale
                         pos.x = new_x
                         pos.y = new_y
 
@@ -154,23 +158,23 @@ class RenderSystem:
             if 'position' in entity.components:
                 pos = entity.components['position']
                 
-                # Rendu des tornades
+                #Rendu des tornades
                 if 'tornado' in entity.components:
                     tornado = entity.components['tornado']
-                    # Mettre à jour la rotation
+                    #Mettre à jour la rotation
                     tornado.angle = (tornado.angle + TORNADO_ROTATION_SPEED) % 360
                     tornado.image = pygame.transform.rotate(tornado.original_image, tornado.angle)
                     
-                    # Calculer la position pour centrer l'image sur le cercle de collision
+                    #Calculer la position pour centrer l'image sur le cercle de collision
                     tornado_rect = tornado.image.get_rect(center=(pos.x, pos.y))
                     self.screen.blit(tornado.image, tornado_rect)
                 
-                # Rendu du sprite principal
+                #Rendu du sprite principal
                 if 'sprite' in entity.components:
                     sprite = entity.components['sprite']
                     self.screen.blit(sprite.image, (pos.x, pos.y))
                     
-                # Rendu du rotor
+                #Rendu du rotor
                 if 'rotor' in entity.components:
                     rotor = entity.components['rotor']
                     rotor.angle = (rotor.angle + rotor.rotation_speed) % 360
@@ -188,44 +192,44 @@ class TornadoSystem:
         self.current_spawn_rate = TORNADO_SPAWN_RATE_INITIAL
     
     def update(self, entities: List[Entity], game_timer: int) -> Optional[bool]:
-        # Ajuster la difficulté en fonction du temps
+        #Ajuster la diff en fonction du temps
         self.current_spawn_rate = max(
             TORNADO_SPAWN_RATE_MIN,
             TORNADO_SPAWN_RATE_INITIAL - (game_timer // DIFFICULTY_INCREASE_INTERVAL) * 5
         )
         
-        # Déplacer les tornades existantes
+        #Déplacer les tornades existantes
         for entity in entities:
             if 'tornado' in entity.components and 'position' in entity.components:
                 pos = entity.components['position']
                 tornado = entity.components['tornado']
                 
-                # Déplacer la tornade vers le bas
+                #Tornade vers le bas
                 pos.y += tornado.speed
                 
-                # Vérifier les collisions avec l'hélicoptère
+                #Vérif les collisions avec l'hélico
                 for other in entities:
                     if 'sprite' in other.components and 'position' in other.components:
                         heli_pos = other.components['position']
                         heli_sprite = other.components['sprite']
                         
-                        # Calculer le centre de l'hélicoptère
+                        #Calculer le centre de l'hélico
                         heli_center_x = heli_pos.x + heli_sprite.image.get_width() / 2
                         heli_center_y = heli_pos.y + heli_sprite.image.get_height() / 2
                         
-                        # Calculer la distance entre la tornade et l'hélicoptère
+                        #Calculer la distance entre la tornade et l'hélico
                         distance = math.sqrt((pos.x - heli_center_x)**2 + (pos.y - heli_center_y)**2)
                         
-                        # Si collision, retourner True pour indiquer game over
+                        #Si collision, retourner True pour indiquer game over
                         if distance < tornado.radius + min(heli_sprite.image.get_width(), 
                                                          heli_sprite.image.get_height()) / 2:
                             return True
                 
-                # Supprimer les tornades qui sortent de l'écran
+                #Supprimer les tornades qui sortent
                 if pos.y > WINDOW_HEIGHT:
                     entities.remove(entity)
         
-        # Spawn de nouvelles tornades avec le taux actualisé
+        #Spawn de nouvelles tornades avec le taux actualisé
         self.spawn_counter += 1
         if self.spawn_counter >= self.current_spawn_rate:
             self.spawn_counter = 0
@@ -235,7 +239,7 @@ class TornadoSystem:
     
     def spawn_tornado(self, entities: List[Entity]):
         tornado = Entity()
-        # Position aléatoire en haut de l'écran
+        #Pos aléatoire en haut de l'écran
         x = random.randint(TORNADO_RADIUS, WINDOW_WIDTH - TORNADO_RADIUS)
         tornado.components['position'] = PositionComponent(x, -TORNADO_RADIUS)
         tornado.components['tornado'] = TornadoComponent(TORNADO_RADIUS, TORNADO_SPEED)
@@ -245,7 +249,7 @@ class TornadoSystem:
 class Game:
     def __init__(self):
         self.screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
-        pygame.display.set_caption("Hélicoptère Exploration")
+        pygame.display.set_caption("Bermuda Explorer")
         self.clock = pygame.time.Clock()
         self.entities: List[Entity] = []
         self.running = True
@@ -276,9 +280,12 @@ class Game:
         self.game_over_info_font = pygame.font.Font(None, 36)
         self.restart_font = pygame.font.Font(None, 40)
 
+        self.background_music = pygame.mixer.Sound(BACKGROUND_MUSIC)
+        self.background_music.set_volume(0.4)  #Ajuster le volume (0.0 à 1.0)
+
     def create_boat(self):
         boat = Entity()
-        # Centrer le bateau en prenant en compte sa taille
+        #Centrer le bateau
         boat_width, boat_height = 103, 212
         boat_x = (WINDOW_WIDTH - boat_width) / 2
         boat_y = (WINDOW_HEIGHT - boat_height) / 2
@@ -291,37 +298,37 @@ class Game:
     def create_helicopter(self):
         helicopter = Entity()
         boat_pos = self.boat.components['position']
-        heli_size = 104  # Taille unique puisque c'est maintenant carré
+        heli_size = 104  #Un carré
         heli_x = boat_pos.x + (103 - heli_size) / 2
         heli_y = boat_pos.y + heli_size - 30
         
         helicopter.components['position'] = PositionComponent(heli_x, heli_y)
         helicopter.components['velocity'] = VelocityComponent()
         helicopter.components['sprite'] = SpriteComponent("./assets/images/heli-sprite.png", heli_size, heli_size)
-        # Ajout du rotor avec une taille proportionnelle à l'hélicoptère
-        rotor_size = 92  # Taille du rotor
+        #Ajout du rotor avec une taille proportionnelle à l'hélico
+        rotor_size = 92  #Taille du rotor
         helicopter.components['rotor'] = RotorComponent("./assets/images/rotor-sprite.png", rotor_size, rotor_size, heli_size)
         self.entities.append(helicopter)
 
     def draw_menu(self):
         self.screen.fill(BLACK)
         
-        # Titre du jeu
+        #Titre du jeu
         title_font = pygame.font.Font(None, TITLE_FONT_SIZE)
         title_text = title_font.render(GAME_TITLE, True, WHITE)
         title_rect = title_text.get_rect(center=(WINDOW_WIDTH/2, WINDOW_HEIGHT/4))
         
-        # Image du menu (à charger et redimensionner)
+        #Image du menu
         menu_image = pygame.image.load("./assets/images/heli-menu.png")  # Créez cette image
         menu_image = pygame.transform.scale(menu_image, (634, 215))  # Ajustez la taille selon vos besoins
         image_rect = menu_image.get_rect(center=(WINDOW_WIDTH/2, WINDOW_HEIGHT/2))
         
-        # Texte "press space to start"
+        #Texte "press space to start"
         subtitle_font = pygame.font.Font(None, SUBTITLE_FONT_SIZE)
         subtitle_text = subtitle_font.render(START_TEXT, True, WHITE)
         subtitle_rect = subtitle_text.get_rect(center=(WINDOW_WIDTH/2, WINDOW_HEIGHT * 3/4))
         
-        # Affichage des éléments
+        #Affichage des éléments
         self.screen.blit(title_text, title_rect)
         self.screen.blit(menu_image, image_rect)
         self.screen.blit(subtitle_text, subtitle_rect)
@@ -330,19 +337,19 @@ class Game:
     def draw_mission_screen(self):
         self.screen.fill(BLACK)
         
-        # Titre de la mission
+        #Titre de la mission
         mission_font = pygame.font.Font(None, 50)
         mission_title = mission_font.render(MISSION_TITLE, True, WHITE)
         title_rect = mission_title.get_rect(topleft=(50, 50))
         
-        # Texte principal
+        #Texte principal
         text_font = pygame.font.Font(None, 36)
-        # Wrap le texte pour qu'il ne dépasse pas l'écran
+        #Wrap le texte pour qu'il ne dépasse pas l'écran
         words = MISSION_TEXT.split()
         lines = []
         current_line = []
         current_width = 0
-        max_width = WINDOW_WIDTH - 100  # Marge de 50px de chaque côté
+        max_width = WINDOW_WIDTH - 100  #Marge de 50px de chaque côté
         
         for word in words:
             word_surface = text_font.render(word + " ", True, WHITE)
@@ -356,7 +363,7 @@ class Game:
                 current_width = word_width
         lines.append(" ".join(current_line))
         
-        # Afficher le texte ligne par ligne
+        #Afficher le texte ligne par ligne
         y_offset = 150
         for line in lines:
             text_surface = text_font.render(line, True, WHITE)
@@ -364,12 +371,12 @@ class Game:
             self.screen.blit(text_surface, text_rect)
             y_offset += 40
         
-        # Texte "Press space to continue"
+        #Texte "Press space to continue"
         continue_font = pygame.font.Font(None, 40)
         continue_text = continue_font.render(CONTINUE_TEXT, True, WHITE)
         continue_rect = continue_text.get_rect(center=(WINDOW_WIDTH/2, WINDOW_HEIGHT - 50))
         
-        # Affichage des éléments
+        #Affichage des éléments
         self.screen.blit(mission_title, title_rect)
         self.screen.blit(continue_text, continue_rect)
         pygame.display.flip()
@@ -393,11 +400,11 @@ class Game:
         rotor = helicopter.components['rotor']
         
         if self.animation_timer < 120:  # 2 premières secondes : démarrage du rotor
-            rotor.rotation_speed = min(rotor.rotation_speed + 1, 15)  # Accélération progressive
-        elif self.animation_timer < 300:  # Décollage vertical
-            rotor.rotation_speed = 30  # Vitesse maximale
+            rotor.rotation_speed = min(rotor.rotation_speed + 1, 15)  #Accél progressive
+        elif self.animation_timer < 300:  #Décollage
+            rotor.rotation_speed = 30  #Vitesse max
             heli_pos.y -= 2.3
-        elif self.animation_timer < 360:  # Fondu au noir
+        elif self.animation_timer < 360:  #Fondu au noir
             self.fade_alpha = min(255, self.fade_alpha + 5)
         else:
             self.in_intro_animation = False
@@ -407,7 +414,7 @@ class Game:
         self.entities.clear()
         self.create_helicopter()
         helicopter = self.entities[-1]
-        # Définir la vitesse de rotation maximale du rotor pour le jeu
+        #vitesse de rotation maxdu rotor
         helicopter.components['rotor'].rotation_speed = 30
         self.game_timer = 0
         self.last_time = pygame.time.get_ticks()
@@ -415,8 +422,8 @@ class Game:
 
     def update_timer(self):
         current_time = pygame.time.get_ticks()
-        if current_time - self.last_time >= 1000:  # 1000ms = 1 seconde
-            self.game_timer += 1  # Incrémenter au lieu de décrémenter
+        if current_time - self.last_time >= 1000:
+            self.game_timer += 1    #Augmentation du timer
             self.last_time = current_time
 
     def draw_timer(self):
@@ -425,30 +432,33 @@ class Game:
         self.screen.blit(timer_text, timer_rect)
 
     def draw_game_over_screen(self):
-        # Créer une surface semi-transparente noire
+        #Surface semi-transparente noire
         overlay = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT))
         overlay.fill((0, 0, 0))
-        overlay.set_alpha(128)  # 128 pour semi-transparent
+        overlay.set_alpha(128)
         self.screen.blit(overlay, (0, 0))
 
-        # Texte "Game Over"
+        #Texte "Game Over"
         game_over_text = self.game_over_font.render('Game Over', True, WHITE)
         game_over_rect = game_over_text.get_rect(center=(WINDOW_WIDTH/2, WINDOW_HEIGHT/2 - 60))
         
-        # Temps survécu
+        #Temps survécu
         time_text = self.game_over_info_font.render(f'Time survived: {self.game_timer} seconds', True, WHITE)
         time_rect = time_text.get_rect(center=(WINDOW_WIDTH/2, WINDOW_HEIGHT/2 + 20))
         
-        # Message pour redémarrer
+        #Message pour redémarrer
         restart_text = self.game_over_info_font.render('Press SPACE to restart', True, WHITE)
         restart_rect = restart_text.get_rect(center=(WINDOW_WIDTH/2, WINDOW_HEIGHT/2 + 80))
         
-        # Afficher tous les textes
+        #Afficher tous les textes
         self.screen.blit(game_over_text, game_over_rect)
         self.screen.blit(time_text, time_rect)
         self.screen.blit(restart_text, restart_rect)
 
     def run(self):
+        #Jouer la musique en boucle
+        self.background_music.play(loops=-1)
+        
         fade_surface = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT))
         fade_surface.fill((0, 0, 0))
 
@@ -462,7 +472,7 @@ class Game:
                             self.start_mission_screen()
                         elif self.in_mission_screen:
                             self.start_intro_animation()
-                        elif self.game_over:  # Ajout de la gestion du restart
+                        elif self.game_over: 
                             self.setup_game_world()
 
             if self.in_menu:
@@ -474,14 +484,14 @@ class Game:
                 self.render_system.update(self.entities)
                 self.update_intro_animation()
                 
-                # Appliquer le fondu au noir si nécessaire
+                #Appliquer le fondu au noir si nécessaire
                 if self.fade_alpha > 0:
                     fade_surface.set_alpha(self.fade_alpha)
                     self.screen.blit(fade_surface, (0, 0))
                 
                 pygame.display.flip()
             else:
-                # Jeu normal
+                #Jeu normal
                 self.screen.blit(self.background_game, (0, 0))
                 
                 if not self.game_over:
@@ -503,6 +513,8 @@ class Game:
 
             self.clock.tick(FPS)
 
+        self.background_music.stop()  # Arrêter la musique
+        pygame.mixer.quit()  # Fermer le système audio
         pygame.quit()
         sys.exit()
 
